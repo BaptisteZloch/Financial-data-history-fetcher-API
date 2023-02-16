@@ -42,9 +42,7 @@ def get_crypto_history(
     crypto_service: CryptoService = Depends(CryptoService),
 ):
     try:
-        return crypto_service.get_list_of_symbols(
-            base_currency=base_currency, quote_currency=quote_currency
-        )
+        return crypto_service.get_history_of_symbol(symbol, since, limit)
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"{e}") from e
 
