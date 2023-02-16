@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build container
-      run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p '${{ secrets.DOCKER_PASSWORD }}' &&  docker build . --file Dockerfile --tag crypto-historical-data-fetcher:latest && docker push crypto-historical-data-fetcher:latest && docker logout
+      run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p '${{ secrets.DOCKER_PASSWORD }}' &&  docker build . --file Dockerfile --tag baptistezloch/crypto-historical-data-fetcher:latest && docker push baptistezloch/crypto-historical-data-fetcher:latest && docker logout
