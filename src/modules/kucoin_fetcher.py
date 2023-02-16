@@ -3,6 +3,7 @@ from typing import Callable
 import pandas as pd
 import os
 import time
+from random import randint
 from kucoin.client import Market
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -21,7 +22,7 @@ class KucoinDataFetcher:
         "12hour": 43200,
         "1day": 86400,
     }
-    __timeframes: tuple[str] = tuple(__timeframes_in_s.keys())
+    timeframes: tuple[str] = tuple(__timeframes_in_s.keys())
 
     def __construct_timestamp_list(
         self,
@@ -58,7 +59,7 @@ class KucoinDataFetcher:
         timestamps.append(start_timestamp)
 
         return sorted(timestamps, reverse=True)
-    
+
     @staticmethod
     def __handle_429_error(func: Callable) -> Callable:
         """Static private decorator that handle error 429 response from Kucoin API.
@@ -69,16 +70,18 @@ class KucoinDataFetcher:
         Returns:
             Callable: The wrapper.
         """
+
         def wrapper(*args, **kwargs):
             passed = False
             while passed == False:
                 try:
                     return func(*args, **kwargs)
                 except:
-                    time.sleep(1)
+                    time.sleep(randint(10, 100) / 100)
                     pass
+
         return wrapper
-    
+
     @__handle_429_error
     def __get_data(
         self, symbol: str, start_at: int, end_at: int, timeframe: str = "15min"
@@ -139,13 +142,6 @@ class KucoinDataFetcher:
         Raises:
             ValueError: Error in using parallelism.
         """
-        assert (
-            symbol in self.get_symbols()
-        ), "Error, wrong symbol, provide something like 'BTC-USDT'."
-        assert (
-            timeframe in self.__timeframes
-        ), f"Error, timeframe must be in {self.__timeframes}"
-
         start_timestamp = int(datetime.strptime(since, "%d-%m-%Y").timestamp())
         end_timestamp = int(datetime.now().timestamp())
 
