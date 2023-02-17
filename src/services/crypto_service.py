@@ -8,7 +8,8 @@ from src.modules.kucoin_fetcher import KucoinDataFetcher
 
 class CryptoService(Service):
     __kucoin_fetcher = KucoinDataFetcher()
-    __base_dir = "../../database/"
+    __base_dir = "./database/"
+    __absolute_start_date = "01-01-2017"
 
     def get_list_of_symbols(
         self, base_currency: Optional[str], quote_currency: Optional[str]
@@ -39,25 +40,41 @@ class CryptoService(Service):
             )
         raise ValueError("Error, wrong parameters.")
 
-    def __check_and_refresh(self, symbol, timeframe, since: str):
+    def __refresh_or_download(self, symbol, timeframe) -> pd.DataFrame:
         if os.path.exists(f"{self.__base_dir}{timeframe}/{symbol}.csv"):
-            data = pd.read_csv(f"{self.__base_dir}{timeframe}/{symbol}.csv")
-        else:
-            self.__kucoin_fetcher.download_history(symbol, since, timeframe, 16)
+            print("History present -> Checking for refresh...")
+            data = pd.read_csv(f"{self.__base_dir}{timeframe}/{symbol}.csv", sep=",")
+            last_timestamp = data["Timestamp"].iloc[-1]
 
-    def get_history_of_symbol(
-        self, symbol: str, timeframe: str, since: str | None = None
-    ):
+            since = datetime.fromtimestamp(last_timestamp).strftime("%d-%m-%Y")
+            print(f"Last timestamp : {last_timestamp} = {since}")
+            if since == datetime.now().strftime("%d-%m-%Y"):
+                return data
+            new_data = self.__kucoin_fetcher.download_history(
+                symbol, since, timeframe, 16
+            )
+
+            data = pd.concat([data, new_data]).drop_duplicates(ignore_index=True)
+            data.to_csv(
+                f"{self.__base_dir}{timeframe}/{symbol}.csv", sep=",", index=False
+            )
+            return data
+        else:  # Download full history
+            print("No history -> Downloading full history...")
+            data = self.__kucoin_fetcher.download_history(
+                symbol, self.__absolute_start_date, timeframe, 16
+            )
+            data.to_csv(
+                f"{self.__base_dir}{timeframe}/{symbol}.csv", sep=",", index=False
+            )
+            return data
+
+    def get_history_of_symbol(self, symbol: str, timeframe: str) -> list[dict]:
         assert (
             timeframe in self.__kucoin_fetcher.timeframes
         ), f"Error, timeframe must be in {self.__kucoin_fetcher.timeframes}"
-        if since is not None:
-            try:
-                start_timestamp = int(datetime.strptime(since, "%d-%m-%Y").timestamp())
-            except:
-                raise ValueError(
-                    "Error, wrong date format, provide something in this format: dd-mm-yyyy"
-                )
+
+        return self.__refresh_or_download(symbol, timeframe).to_dict(orient="records")
 
         # assert (
         #     symbol in self.__kucoin_fetcher.get_symbols()

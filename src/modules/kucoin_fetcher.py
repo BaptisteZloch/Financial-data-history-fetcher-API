@@ -103,17 +103,17 @@ class KucoinDataFetcher:
         df = pd.DataFrame(
             klines,
             columns=[
-                "Date",
+                "Timestamp",
                 "Open",
+                "Close",
                 "High",
                 "Low",
-                "Close",
-                "Volume",
                 "Amount",
+                "Volume",
             ],
             dtype=float,
         )
-        df["Date"] = df["Date"].astype(int)
+        df["Timestamp"] = df["Timestamp"].astype(int)
 
         return df
 
@@ -130,7 +130,7 @@ class KucoinDataFetcher:
 
     def download_history(
         self, symbol: str, since: str, timeframe: str, jobs: int = -1
-    ) -> None:
+    ) -> pd.DataFrame:
         """Download a set of historical data and save it.
 
         Args:
@@ -141,8 +141,16 @@ class KucoinDataFetcher:
 
         Raises:
             ValueError: Error in using parallelism.
+
+        Returns:
+            pd.DataFrame: The dataframe containing historical records.
         """
-        start_timestamp = int(datetime.strptime(since, "%d-%m-%Y").timestamp())
+        try:
+            start_timestamp = int(datetime.strptime(since, "%d-%m-%Y").timestamp())
+        except:
+            raise ValueError(
+                "Error, wrong date format, provide something in this format: dd-mm-yyyy"
+            )
         end_timestamp = int(datetime.now().timestamp())
 
         assert (
@@ -154,7 +162,15 @@ class KucoinDataFetcher:
         )
 
         df = pd.DataFrame(
-            columns=["Date", "Open", "High", "Low", "Close", "Volume", "Amount"],
+            columns=[
+                "Timestamp",
+                "Open",
+                "Close",
+                "High",
+                "Low",
+                "Amount",
+                "Volume",
+            ],
             dtype=float,
         )
 
@@ -170,7 +186,9 @@ class KucoinDataFetcher:
                 )
 
         elif jobs > 1 and jobs <= 50:
-            with ThreadPoolExecutor(max_workers=jobs) as executor:
+            with ThreadPoolExecutor(
+                max_workers=len(timestamps) if len(timestamps) <= 20 else jobs
+            ) as executor:
                 processes = [
                     executor.submit(
                         self.__get_data,
@@ -189,12 +207,11 @@ class KucoinDataFetcher:
                 "Error, jobs must be between 50 and 2 to use parallelism or -1 and 1 to do it sequentially."
             )
 
-        df = df.sort_values(by="Date")
-        df["Timestamp"] = df["Date"].astype(int)
-        df["Date"] = df["Date"].astype(int).apply(datetime.fromtimestamp)
-        df = df.set_index("Date")
+        df = df.sort_values(by="Timestamp")
+        df.drop_duplicates(inplace=True)
+        return df
 
-        if not os.path.exists(f"../../database/{timeframe}/"):
-            os.makedirs(f"../../database/{timeframe}/")
+        # if not os.path.exists(f"../../database/{timeframe}/"):
+        #     os.makedirs(f"../../database/{timeframe}/")
 
-        df.to_csv(f"../../database/{timeframe}/{symbol}.csv", sep=",", index=False)
+        # df.to_csv(f"../../database/{timeframe}/{symbol}.csv", sep=",", index=False)

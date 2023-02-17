@@ -33,16 +33,17 @@ def get_crypto_available(
         raise HTTPException(status_code=404, detail=f"{e}") from e
 
 
-@app.get("/api/v1/crypto/available")
+@app.get("/api/v1/crypto/history")
 def get_crypto_history(
     symbol: str,
     timeframe: str,
-    since: str | None = None,
     limit: int | None = None,
     crypto_service: CryptoService = Depends(CryptoService),
 ):
     try:
-        return crypto_service.get_history_of_symbol(symbol, since, limit)
+        if limit is not None and limit > 0:
+            return crypto_service.get_history_of_symbol(symbol, timeframe)[-limit:]
+        return crypto_service.get_history_of_symbol(symbol, timeframe)
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"{e}") from e
 
