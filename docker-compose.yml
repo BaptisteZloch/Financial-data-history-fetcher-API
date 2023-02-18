@@ -1,7 +1,8 @@
 version: "3"
 services:
   fetcher:
-    build: .
+    #build: .
+    image: baptistezloch/crypto-historical-data-fetcher
     container_name: fetcher
     restart: unless-stopped
     environment:

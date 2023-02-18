@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fetcher-config
+data:
+  app-env: "prod"
+  app-port: "8000"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fetcher-deployment
+  labels:
+    app: fetcher # Optional
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fetcher # Must match  template: metadata:labels:app:
+  template:
+    metadata:
+      labels:
+        app: fetcher # Mandatory
+    spec:
+      containers:
+      - name: fetcher
+        image: baptistezloch/crypto-historical-data-fetcher:latest
+        resources:
+          limits:
+            memory: 3000Mi
+            cpu: "2"
+          requests:
+            memory: 256Mi
+            cpu: "1"
+        ports:
+        - containerPort: 8000
+        env:
+        - name: APP_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: fetcher-config
+              key: app-env
+        - name: APP_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: fetcher-config
+              key: app-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fetcher-service
+spec:
+  type: NodePort # ClusterIP
+  selector:
+    app.kubernetes.io/name: fetcher
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000 # should be the same as containerPort
+      nodePort: 30100
