@@ -32,7 +32,7 @@ def get_crypto_available(
 
 @app.get(
     "/api/v1/crypto/history",
-    response_model=list[dict[str, int | float]] | dict[str, str],
+    response_model=list[dict[str, float]] | dict[str, str],
 )
 def get_crypto_history(
     background_tasks: BackgroundTasks,
@@ -56,9 +56,10 @@ def get_crypto_history(
             return {
                 "message": "Warning the timeframe and crypto you selected needs a long download time please retry in a few minutes."
             }
-        if limit is not None and limit > 0:
-            return crypto_service.get_history_of_symbol(symbol, timeframe)[-limit:]
-        return crypto_service.get_history_of_symbol(symbol, timeframe)
+        df_to_send = crypto_service.get_history_of_symbol(symbol, timeframe)
+        if limit is not None and limit > 0 and len(df_to_send) > limit:
+            return df_to_send[-limit:]
+        return df_to_send
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"{e}") from e
 

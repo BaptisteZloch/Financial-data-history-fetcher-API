@@ -10,7 +10,11 @@ from src.modules.kucoin_fetcher import KucoinDataFetcher
 
 class CryptoService(Service):
     __kucoin_fetcher = KucoinDataFetcher()
-    __base_dir = "./database/"
+    __base_dir = (
+        "./database/"
+        if os.getenv("APP_ENV", "dev") == "dev"
+        else "/usr/src/app/database/"
+    )
     __absolute_start_date = "01-01-2017"
 
     def get_list_of_symbols(
@@ -79,7 +83,8 @@ class CryptoService(Service):
 
     def refresh_list_of_symbols(self) -> None:
         """Function that refreshes the database's crypto listing."""
-        with open(f"{self.__base_dir}list_available/crypto_available.json", "w+") as f:
+        self.__init_directories()
+        with open(f"{self.__base_dir}list_available/crypto_available.json", "w") as f:
             json.dump({"listing": self.__kucoin_fetcher.get_symbols()}, f)
 
     def check_file_exists(self, symbol: str, timeframe: str) -> bool:
@@ -100,7 +105,7 @@ class CryptoService(Service):
         Returns:
             list[str]: The list of symbols.
         """
-        with open(f"{self.__base_dir}list_available/crypto_available.json", "w") as f:
+        with open(f"{self.__base_dir}list_available/crypto_available.json", "r") as f:
             return json.load(f)["listing"]
 
     def __refresh_or_download(self, symbol: str, timeframe: str) -> pd.DataFrame:
@@ -115,7 +120,9 @@ class CryptoService(Service):
         """
         if self.check_file_exists(symbol, timeframe):
             print("History present -> Checking for refresh...")
-            data = pd.read_csv(f"{self.__base_dir}{timeframe}/{symbol}.csv", sep=",")
+            data = pd.read_csv(
+                f"{self.__base_dir}{timeframe}/{symbol}.csv", sep=",", dtype=float
+            )
             last_timestamp = data["Timestamp"].iloc[-1]
 
             since = datetime.fromtimestamp(last_timestamp).strftime("%d-%m-%Y")
@@ -130,7 +137,7 @@ class CryptoService(Service):
             data.to_csv(
                 f"{self.__base_dir}{timeframe}/{symbol}.csv", sep=",", index=False
             )
-            print("Finito")
+            print("Finished")
             return data
         else:  # Download full history
             print("No history -> Downloading full history...")
@@ -140,5 +147,11 @@ class CryptoService(Service):
             data.to_csv(
                 f"{self.__base_dir}{timeframe}/{symbol}.csv", sep=",", index=False
             )
-            print("Finito")
+            print("Finished")
             return data
+
+    def __init_directories(self) -> None:
+        """Private function that init all directories."""
+        for tf in self.__kucoin_fetcher.timeframes:
+            os.makedirs(f"{self.__base_dir}{tf}", exist_ok=True)
+        os.makedirs(f"{self.__base_dir}list_available", exist_ok=True)
