@@ -16,7 +16,7 @@ Run the building process and run the project just execute :
 docker compose up --build
 ```
 ### Kubernetes
-**Soon read**
+**Soon available**
 
 ## Without containers
 First clone the project :
