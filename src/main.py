@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
@@ -18,8 +19,8 @@ app.add_middleware(
 
 @app.get("/api/v1/crypto/available", response_model=list[str] | list | dict[str, str])
 def get_crypto_available(
-    base_currency: str | None = None,
-    quote_currency: str | None = None,
+    base_currency: Optional[str] = None,
+    quote_currency: Optional[str] = None,
     crypto_service: CryptoService = Depends(CryptoService),
 ):
     try:
@@ -32,13 +33,13 @@ def get_crypto_available(
 
 @app.get(
     "/api/v1/crypto/history",
-    response_model=list[dict[str, float]] | dict[str, str],
+    response_model=list[dict[str, float | int]] | dict[str, str],
 )
 def get_crypto_history(
     background_tasks: BackgroundTasks,
     symbol: str,
     timeframe: str,
-    limit: int | None = None,
+    limit: Optional[int] = None,
     crypto_service: CryptoService = Depends(CryptoService),
 ):
     try:
