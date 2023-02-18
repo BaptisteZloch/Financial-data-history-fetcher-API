@@ -67,9 +67,7 @@ def start():
     """Launched with `poetry run start` at root level"""
     CryptoService().refresh_list_of_symbols()
     scheduler = BackgroundScheduler()
-    scheduler.add_job(
-        CryptoService().refresh_list_of_symbols, trigger="cron", minute="*"
-    )
+    scheduler.add_job(CryptoService().refresh_list_of_symbols, trigger="cron", day="*")
     scheduler.start()
     if os.getenv("APP_ENV", "dev") == "dev":
         uvicorn.run(

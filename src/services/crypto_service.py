@@ -4,7 +4,6 @@ import os
 import pandas as pd
 import json
 
-
 from src.services.service import Service
 from src.modules.kucoin_fetcher import KucoinDataFetcher
 
@@ -13,11 +12,6 @@ class CryptoService(Service):
     __kucoin_fetcher = KucoinDataFetcher()
     __base_dir = "./database/"
     __absolute_start_date = "01-01-2017"
-
-    def refresh_list_of_symbols(self) -> None:
-        """Function that refreshes the database's crypto listing."""
-        with open(f"{self.__base_dir}list_available/crypto_available.json", "w") as f:
-            json.dump({"listing": self.__kucoin_fetcher.get_symbols()}, f)
 
     def get_list_of_symbols(
         self, base_currency: Optional[str] = None, quote_currency: Optional[str] = None
@@ -34,8 +28,7 @@ class CryptoService(Service):
         Returns:
             list[str]: The list of symbols.
         """
-        with open(f"{self.__base_dir}list_available/crypto_available.json", "w") as f:
-            symbols = json.load(f)["listing"]
+        symbols = self.__open_symbols_list()
         if base_currency == None and quote_currency == None:
             return symbols
         elif base_currency == None and quote_currency is not None:
@@ -62,8 +55,56 @@ class CryptoService(Service):
             )
         raise ValueError("Error, wrong parameters.")
 
-    def __refresh_or_download(self, symbol:str, timeframe:str) -> pd.DataFrame:
-        """This private function is used to refresh or download the history of a symbol.
+    def get_history_of_symbol(
+        self, symbol: str, timeframe: str
+    ) -> list[dict[str, float | int]]:
+        """Function that get the history of a symbol.
+
+        Args:
+            symbol (str): The crypto symbol file.
+            timeframe (str): The history's timeframe.
+
+        Returns:
+            list[dict[str, float | int]]: The list of record corresponding to the history.
+        """
+        assert (
+            timeframe in self.__kucoin_fetcher.timeframes
+        ), f"Error, timeframe must be in {self.__kucoin_fetcher.timeframes}"
+
+        assert (
+            symbol in self.get_list_of_symbols()
+        ), "Error, wrong symbol, provide something like 'BTC-USDT'."
+
+        return self.__refresh_or_download(symbol, timeframe).to_dict(orient="records")
+
+    def refresh_list_of_symbols(self) -> None:
+        """Function that refreshes the database's crypto listing."""
+        with open(f"{self.__base_dir}list_available/crypto_available.json", "w+") as f:
+            json.dump({"listing": self.__kucoin_fetcher.get_symbols()}, f)
+
+    def check_file_exists(self, symbol: str, timeframe: str) -> bool:
+        """Verify if the history has already been fetched
+
+        Args:
+            symbol (str): The crypto symbol file.
+            timeframe (str): The history's timeframe.
+
+        Returns:
+            bool: Whether or not the history is present.
+        """
+        return os.path.exists(f"{self.__base_dir}{timeframe}/{symbol}.csv")
+
+    def __open_symbols_list(self) -> list[str]:
+        """Private function that opens, reads and returns the list of symbols from the database's file.
+
+        Returns:
+            list[str]: The list of symbols.
+        """
+        with open(f"{self.__base_dir}list_available/crypto_available.json", "w") as f:
+            return json.load(f)["listing"]
+
+    def __refresh_or_download(self, symbol: str, timeframe: str) -> pd.DataFrame:
+        """Private function used to refresh or download the history of a symbol.
 
         Args:
             symbol (str): The crypto symbol file.
@@ -101,37 +142,3 @@ class CryptoService(Service):
             )
             print("Finito")
             return data
-
-    def get_history_of_symbol(
-        self, symbol: str, timeframe: str
-    ) -> list[dict[str, float | int]]:
-        """Function that get the history of a symbol.
-
-        Args:
-            symbol (str): The crypto symbol file.
-            timeframe (str): The history's timeframe.
-
-        Returns:
-            list[dict[str, float | int]]: The list of record corresponding to the history.
-        """
-        assert (
-            timeframe in self.__kucoin_fetcher.timeframes
-        ), f"Error, timeframe must be in {self.__kucoin_fetcher.timeframes}"
-
-        assert (
-            symbol in self.get_list_of_symbols()
-        ), "Error, wrong symbol, provide something like 'BTC-USDT'."
-
-        return self.__refresh_or_download(symbol, timeframe).to_dict(orient="records")
-
-    def check_file_exists(self, symbol:str, timeframe:str) -> bool:
-        """Verify if the history has already been fetched
-
-        Args:
-            symbol (str): The crypto symbol file.
-            timeframe (str): The history's timeframe.
-
-        Returns:
-            bool: Whether or not the history is present.
-        """
-        return os.path.exists(f"{self.__base_dir}{timeframe}/{symbol}.csv")

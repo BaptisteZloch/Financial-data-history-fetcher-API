@@ -1,0 +1,18 @@
+version: "3"
+services:
+  fetcher:
+    build: .
+    container_name: fetcher
+    restart: unless-stopped
+    environment:
+      APP_ENV: "test"
+      APP_PORT: "8000"
+    volumes:
+        - ~/docker_volumes/crypto-fectcher:/usr/src/app/database
+    ports:
+      - 8000:8000
+    networks:
+      - fetcher-network
+networks:
+  fetcher-network:
+    driver: bridge
