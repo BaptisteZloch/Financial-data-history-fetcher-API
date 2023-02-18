@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "src"
+name = "financial-data-history-fetcher"
 version = "0.1.0"
 description = "Project aimed to fetch historical data for crypto, stock... No matter the timeframe."
 authors = ["BaptisteZloch <bzloch@hotmail.fr>"]

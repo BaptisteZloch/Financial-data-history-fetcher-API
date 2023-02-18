@@ -8,7 +8,7 @@ The API is in Python with Fast API and uses the KuCoin API SDK.
 ### Docker compose 
 First clone the project :
 ```bash
-git clone https://github.com/BaptisteZloch/Financial-data-historical-fetcher-API.git
+git clone https://github.com/BaptisteZloch/Financial-data-history-fetcher-API.git
 ```
 The docker compose file in already ready to and build and launch the app however you can change the volume, network and environnement variables parts.
 Run the building process and run the project just execute :
@@ -21,7 +21,7 @@ docker compose up --build
 ## Without containers
 First clone the project :
 ```bash
-git clone https://github.com/BaptisteZloch/Financial-data-historical-fetcher-API.git
+git clone https://github.com/BaptisteZloch/Financial-data-history-fetcher-API.git
 ```
 Then install all the dependencies 
 ```bash
