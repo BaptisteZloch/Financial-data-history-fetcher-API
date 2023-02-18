@@ -2,6 +2,9 @@ from datetime import datetime
 from typing import Optional
 import os
 import pandas as pd
+import json
+
+
 from src.services.service import Service
 from src.modules.kucoin_fetcher import KucoinDataFetcher
 
@@ -11,23 +14,42 @@ class CryptoService(Service):
     __base_dir = "./database/"
     __absolute_start_date = "01-01-2017"
 
+    def refresh_list_of_symbols(self) -> None:
+        """Function that refreshes the database's crypto listing."""
+        with open(f"{self.__base_dir}list_available/crypto_available.json", "w") as f:
+            json.dump({"listing": self.__kucoin_fetcher.get_symbols()}, f)
+
     def get_list_of_symbols(
-        self, base_currency: Optional[str], quote_currency: Optional[str]
+        self, base_currency: Optional[str] = None, quote_currency: Optional[str] = None
     ) -> list[str]:
+        """Return the list of symbol in the database's file.
+
+        Args:
+            base_currency (Optional[str]): Filter by base currency.
+            quote_currency (Optional[str]): Filter by quote currency.
+
+        Raises:
+            ValueError: If there is an error.
+
+        Returns:
+            list[str]: The list of symbols.
+        """
+        with open(f"{self.__base_dir}list_available/crypto_available.json", "w") as f:
+            symbols = json.load(f)["listing"]
         if base_currency == None and quote_currency == None:
-            return self.__kucoin_fetcher.get_symbols()
+            return symbols
         elif base_currency == None and quote_currency is not None:
             return list(
                 filter(
                     lambda symbol: symbol.split("-")[-1] == quote_currency.upper(),
-                    self.__kucoin_fetcher.get_symbols(),
+                    symbols,
                 )
             )
         elif quote_currency == None and base_currency is not None:
             return list(
                 filter(
                     lambda symbol: symbol.split("-")[0] == base_currency.upper(),
-                    self.__kucoin_fetcher.get_symbols(),
+                    symbols,
                 )
             )
         elif quote_currency is not None and base_currency is not None:
@@ -35,13 +57,22 @@ class CryptoService(Service):
                 filter(
                     lambda symbol: symbol.split("-")[0] == base_currency.upper()
                     and symbol.split("-")[-1] == quote_currency.upper(),
-                    self.__kucoin_fetcher.get_symbols(),
+                    symbols,
                 )
             )
         raise ValueError("Error, wrong parameters.")
 
-    def __refresh_or_download(self, symbol, timeframe) -> pd.DataFrame:
-        if os.path.exists(f"{self.__base_dir}{timeframe}/{symbol}.csv"):
+    def __refresh_or_download(self, symbol:str, timeframe:str) -> pd.DataFrame:
+        """This private function is used to refresh or download the history of a symbol.
+
+        Args:
+            symbol (str): The crypto symbol file.
+            timeframe (str): The history's timeframe.
+
+        Returns:
+            pd.DataFrame: The complete history refreshed or not.
+        """
+        if self.check_file_exists(symbol, timeframe):
             print("History present -> Checking for refresh...")
             data = pd.read_csv(f"{self.__base_dir}{timeframe}/{symbol}.csv", sep=",")
             last_timestamp = data["Timestamp"].iloc[-1]
@@ -58,6 +89,7 @@ class CryptoService(Service):
             data.to_csv(
                 f"{self.__base_dir}{timeframe}/{symbol}.csv", sep=",", index=False
             )
+            print("Finito")
             return data
         else:  # Download full history
             print("No history -> Downloading full history...")
@@ -67,15 +99,39 @@ class CryptoService(Service):
             data.to_csv(
                 f"{self.__base_dir}{timeframe}/{symbol}.csv", sep=",", index=False
             )
+            print("Finito")
             return data
 
-    def get_history_of_symbol(self, symbol: str, timeframe: str) -> list[dict]:
+    def get_history_of_symbol(
+        self, symbol: str, timeframe: str
+    ) -> list[dict[str, float | int]]:
+        """Function that get the history of a symbol.
+
+        Args:
+            symbol (str): The crypto symbol file.
+            timeframe (str): The history's timeframe.
+
+        Returns:
+            list[dict[str, float | int]]: The list of record corresponding to the history.
+        """
         assert (
             timeframe in self.__kucoin_fetcher.timeframes
         ), f"Error, timeframe must be in {self.__kucoin_fetcher.timeframes}"
 
+        assert (
+            symbol in self.get_list_of_symbols()
+        ), "Error, wrong symbol, provide something like 'BTC-USDT'."
+
         return self.__refresh_or_download(symbol, timeframe).to_dict(orient="records")
 
-        # assert (
-        #     symbol in self.__kucoin_fetcher.get_symbols()
-        # ), "Error, wrong symbol, provide something like 'BTC-USDT'."
+    def check_file_exists(self, symbol:str, timeframe:str) -> bool:
+        """Verify if the history has already been fetched
+
+        Args:
+            symbol (str): The crypto symbol file.
+            timeframe (str): The history's timeframe.
+
+        Returns:
+            bool: Whether or not the history is present.
+        """
+        return os.path.exists(f"{self.__base_dir}{timeframe}/{symbol}.csv")

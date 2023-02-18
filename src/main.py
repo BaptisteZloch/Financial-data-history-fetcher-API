@@ -1,11 +1,8 @@
 import os
-from typing import Any, Optional
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
-
-from fastapi import FastAPI, HTTPException, Depends
-from starlette.responses import Response
-
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
+from apscheduler.schedulers.background import BackgroundScheduler
 from src.services.crypto_service import CryptoService
 
 app = FastAPI()
@@ -19,7 +16,7 @@ app.add_middleware(
 )
 
 
-@app.get("/api/v1/crypto/available", response_model=Optional[list[str]])
+@app.get("/api/v1/crypto/available", response_model=list[str] | list | dict[str, str])
 def get_crypto_available(
     base_currency: str | None = None,
     quote_currency: str | None = None,
@@ -33,14 +30,32 @@ def get_crypto_available(
         raise HTTPException(status_code=404, detail=f"{e}") from e
 
 
-@app.get("/api/v1/crypto/history")
+@app.get(
+    "/api/v1/crypto/history",
+    response_model=list[dict[str, int | float]] | dict[str, str],
+)
 def get_crypto_history(
+    background_tasks: BackgroundTasks,
     symbol: str,
     timeframe: str,
     limit: int | None = None,
     crypto_service: CryptoService = Depends(CryptoService),
 ):
     try:
+        if timeframe in [
+            "1min",
+            "2min",
+            "5min",
+            "15min",
+            "30min",
+            "1hour",
+        ] and not crypto_service.check_file_exists(symbol, timeframe):
+            background_tasks.add_task(
+                crypto_service.get_history_of_symbol, symbol, timeframe
+            )
+            return {
+                "message": "Warning the timeframe and crypto you selected needs a long download time please retry in a few minutes."
+            }
         if limit is not None and limit > 0:
             return crypto_service.get_history_of_symbol(symbol, timeframe)[-limit:]
         return crypto_service.get_history_of_symbol(symbol, timeframe)
@@ -50,6 +65,12 @@ def get_crypto_history(
 
 def start():
     """Launched with `poetry run start` at root level"""
+    CryptoService().refresh_list_of_symbols()
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(
+        CryptoService().refresh_list_of_symbols, trigger="cron", minute="*"
+    )
+    scheduler.start()
     if os.getenv("APP_ENV", "dev") == "dev":
         uvicorn.run(
             "src.main:app",

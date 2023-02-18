@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "src"
 version = "0.1.0"
-description = ""
+description = "Project aimed to fetch historical data for crypto, stock... No matter the timeframe."
 authors = ["BaptisteZloch <bzloch@hotmail.fr>"]
 readme = "README.md"
 
@@ -11,6 +11,7 @@ fastapi = "^0.92.0"
 pandas = "^1.5.3"
 kucoin-python = "^1.0.11"
 uvicorn = "^0.20.0"
+apscheduler = "^3.10.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
