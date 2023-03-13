@@ -65,12 +65,16 @@ def get_crypto_history(
         raise HTTPException(status_code=404, detail=f"{e}") from e
 
 
-def start():
-    """Launched with `poetry run start` at root level"""
+@app.on_event("startup")
+def app_startup() -> None:
     CryptoService().refresh_list_of_symbols()
     scheduler = BackgroundScheduler()
     scheduler.add_job(CryptoService().refresh_list_of_symbols, trigger="cron", day="*")
     scheduler.start()
+
+
+def start():
+    """Launched with `poetry run start` at root level"""
     if os.getenv("APP_ENV", "dev") == "dev":
         uvicorn.run(
             "src.main:app",
